@@ -9,8 +9,9 @@ build:
 
 find:
 	/bin/bash finder.sh $(DIR) $(STR) $(NUM_FILES)
-
-test:
+t: build
+	./finder $(DIR) $(STR) $(NUM_FILES)
+test: build
 	/bin/bash finder.sh $(DIR) $(STR) $(NUM_FILES) > tmp1
 	./finder $(DIR) $(STR) $(NUM_FILES) > tmp2
 	-diff tmp1 tmp2
