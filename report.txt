@@ -1,0 +1,14 @@
+1. Briedfly describe the design of the program. How many processes and how many pipes are created in your solution? How does data flow from process to process?
+
+I have three pipes in my program, one between each of the four commands. Data flows from each command into the pipe into the next command.  The last command doesn't pipe its output, instead it just outputs to stdout.  For the other executables dup2() is used to redirect stdout and stdin to the write and read ends of the correct pipe.
+
+2. Did you have any problems writing or debugging this program? How did you test and debug your solution?
+
+Pipes in *nix are pretty easy. Just have to be careful to close all the pipes. I built up the program incrementally: get the first execl() function working, then pipe it to a second process, then get the second execl() function working. etc.  BUilt in this way debugging was pretty easy because I was only adding one feature at a time.
+
+3. When he was head of Bell Labs, Doug McIlroy summarized the "Unix philosophy" as follows:
+   "Write programs that do one thing and do it well. Write programs to work together. Write programs to handle text streams, because that is a universal interface"
+
+   How do pipes contribute to the Unix philosophy? Also, do you think this is a "good" philosophy for software engineering?
+
+Pipe contribute to this philosophy because then programs can do one thing then pipe their output to another program.  In this way more complex functionality can be built from simpler programs.  This is a good philosophy for software engineering because it encourages modular design.

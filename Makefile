@@ -26,6 +26,6 @@ clean:
 tar:
 	make clean
 	mkdir $(STUDENT_ID)-ipc-lab
-	cp -r bash-4.2 Makefile finder.sh finder.c $(STUDENT_ID)-ipc-lab
+	cp -r bash-4.2 Makefile finder.sh finder.c  report.txt $(STUDENT_ID)-ipc-lab
 	tar cvzf $(STUDENT_ID)-ipc-lab.tar.gz $(STUDENT_ID)-ipc-lab
 	rm -rf $(STUDENT_ID)-ipc-lab
