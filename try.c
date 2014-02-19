@@ -7,6 +7,7 @@
 #define FIND_EXEC "/usr/bin/find"
 #define XARGS_EXEC "/usr/bin/xargs"
 #define GREP_EXEC "/bin/grep"
+#define SORT_EXEC "/usr/bin/sort"
 #define BSIZE 256
 
 int main( int argc, char ** argv )
@@ -16,8 +17,13 @@ int main( int argc, char ** argv )
   int status;
 
   if( pipe(findpipe) == -1 ) {
-    perror("pipe");
+    perror("find pipe");
   }
+  if( pipe(xargspipe) == -1 ) {
+    perror("xargs pipe");
+  }
+
+
   
   if( argc < 2 )
     {
@@ -33,6 +39,8 @@ int main( int argc, char ** argv )
     dup2(findpipe[1], STDOUT_FILENO);
     close(findpipe[1]);
     close(findpipe[0]);
+    close(xargspipe[0]);
+    close(xargspipe[1]);
     if( execl( FIND_EXEC, "find", argv[1], "-name", "*.[ch]", (char *) NULL ) == -1 ) {
       printf("find $1 -name '*'.[ch] failed\n");
     }
@@ -43,9 +51,12 @@ int main( int argc, char ** argv )
   if( pid_2 < 0 ) {
     perror("fork #2");
   } else if( !pid_2 ) {
-    dup2(findpipe[0], STDIN_FILENO );
+    dup2(findpipe[0], STDIN_FILENO);
     close(findpipe[0]);
     close(findpipe[1]);
+    dup2(xargspipe[1], STDOUT_FILENO);
+    close(xargspipe[0]);
+    close(xargspipe[1]);
     if( execl( XARGS_EXEC, "xargs", GREP_EXEC, "-c", argv[2], (char *) NULL ) == -1 ) {
       printf("xargs grep -c $2 failed\n");
     }
@@ -58,10 +69,19 @@ int main( int argc, char ** argv )
   } else if( !pid_3 ) {
     close(findpipe[0]);
     close(findpipe[1]);
+    dup2(xargspipe[0], STDIN_FILENO);
+    close(xargspipe[0]);
+    close(xargspipe[1]);
+    if( execl( SORT_EXEC, "sort", "-t", ":", "+1.0", "-2.0", "--numeric", "--reverse", (char *) NULL ) == -1 ) {
+      printf("sort -t : +1.0 -2.0 --numeric --reverse failed\n");
+    }
+    exit(0);
   }
 
   close(findpipe[0]);
   close(findpipe[1]);
+  close(xargspipe[0]);
+  close(xargspipe[1]);
 
   if ((waitpid(pid_1, &status, 0)) == -1) {
     fprintf(stderr, "Process 1 encountered an error. ERROR%d", errno);
