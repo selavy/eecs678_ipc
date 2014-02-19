@@ -1,17 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <errno.h>
 
 #define FIND_EXEC "/usr/bin/find"
+#define XARGS_EXEC "/usr/bin/xargs"
+#define GREP_EXEC "/bin/grep"
 #define BSIZE 256
 
 int main( int argc, char ** argv )
 {
-  pid_t pid_1, pid_2;
-  int pipefd[2];
+  pid_t pid_1, pid_2, pid_3;
+  int findpipe[2], xargspipe[2];
+  int status;
 
-
-  if( pipe(pipefd) == -1 ) {
+  if( pipe(findpipe) == -1 ) {
     perror("pipe");
   }
   
@@ -24,37 +28,52 @@ int main( int argc, char ** argv )
   pid_1 = fork();
   if( pid_1 < 0 ) {
       perror("fork #1");
-  }
-  else if( !pid_1 ) {
-      /* child 1 */
-    dup2(pipefd[1], STDOUT_FILENO);
-    close(pipefd[1]);
-    close(pipefd[0]);
-    execl( FIND_EXEC, "find", argv[1], "-name", "*.[ch]", (char *) NULL );
+  } else if( !pid_1 ) {
+    /* child 1 */
+    dup2(findpipe[1], STDOUT_FILENO);
+    close(findpipe[1]);
+    close(findpipe[0]);
+    if( execl( FIND_EXEC, "find", argv[1], "-name", "*.[ch]", (char *) NULL ) == -1 ) {
+      printf("find $1 -name '*'.[ch] failed\n");
+    }
     exit(0);
   }
-
+  
   pid_2 = fork();
   if( pid_2 < 0 ) {
     perror("fork #2");
-  }
-  else if( !pid_2 ) {
-    size_t rsize;
-    char buf[BSIZE];
-    dup2(pipefd[0], STDIN_FILENO );
-    close( pipefd[0] );
-    close(pipefd[1]);
-    while( (rsize = read( STDIN_FILENO, buf, BSIZE )) > 0 ) {
-      printf("%s", buf);
+  } else if( !pid_2 ) {
+    dup2(findpipe[0], STDIN_FILENO );
+    close(findpipe[0]);
+    close(findpipe[1]);
+    if( execl( XARGS_EXEC, "xargs", GREP_EXEC, "-c", argv[2], (char *) NULL ) == -1 ) {
+      printf("xargs grep -c $2 failed\n");
     }
     exit(0);
   }
 
-  close(pipefd[0]);
-  close(pipefd[1]);
-  
+  pid_3 = fork();
+  if( pid_3 < 0 ) {
+    perror("fork #3");
+  } else if( !pid_3 ) {
+    close(findpipe[0]);
+    close(findpipe[1]);
+  }
 
+  close(findpipe[0]);
+  close(findpipe[1]);
 
-  wait();
+  if ((waitpid(pid_1, &status, 0)) == -1) {
+    fprintf(stderr, "Process 1 encountered an error. ERROR%d", errno);
+    return EXIT_FAILURE;
+  }
+  if ((waitpid(pid_2, &status, 0)) == -1) {
+    fprintf(stderr, "Process 2 encountered an error. ERROR%d", errno);
+    return EXIT_FAILURE;
+  }  
+  if ((waitpid(pid_3, &status, 0)) == -1) {
+    fprintf(stderr, "Process 3 encountered an error. ERROR%d", errno);
+    return EXIT_FAILURE;
+  }
   return 0;
 }
